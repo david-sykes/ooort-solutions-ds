@@ -18,6 +18,27 @@ impl Ship {
     pub fn new() -> Ship {
         Ship {}
     }
+// 
+    pub fn adjust_torque_to_target_angle(&mut self, aim_vector: Vec2){
+        debug!("angular velocity: {}", angular_velocity());
+        let required_rotation = angle_diff(heading(), aim_vector.angle());
+        debug!("Required rotation: {}", required_rotation);
+        let required_slow_down_torque = (-1.0 * angular_velocity().powf(2.0)) / (2.0 * required_rotation);
+        debug!("Required slow down torque: {}", required_slow_down_torque);
+
+
+        if required_slow_down_torque.abs() > max_angular_acceleration() - 0.5 {
+                debug!("Torque set to: {}", required_slow_down_torque);
+                torque(required_slow_down_torque);
+                }
+        else {
+                debug!("Torque set to: {}", required_rotation.signum() * max_angular_acceleration());
+                torque(required_rotation.signum() * max_angular_acceleration());
+        }
+        
+        }
+        
+
 
     pub fn shoot_at_moving_target(&mut self){
         
@@ -42,39 +63,22 @@ impl Ship {
         // Calculate the aim vector
         let aim = (target() / time ) + target_velocity();
 
-        debug!("distance to target: {}", dp.length());
-        debug!("Time: {}", time);
-        debug!("Heading: {}", heading());
-        debug!("Aim angle: {}", aim.angle());
-        debug!("velocity: {}", target_velocity().length());
-        debug!("time to target: {}", dp.length() / BULLET_SPEED);
 
         // Add aim line
         draw_line(position(), position() + aim, 0xff0000);
 
         // Calculate angle between heading and the aim vector
-        turn(
-            10.0 * angle_diff(
-                heading(), 
-                    aim.angle()
-                )
-            );
+        self.adjust_torque_to_target_angle(aim);
         fire(0);
     }
 
     pub fn tick(&mut self) {
-        set_radar_heading(radar_heading() + radar_width()/10.0);
+        set_radar_width(2.0*PI / 100.0);
+        set_radar_heading(radar_heading() - radar_width());
         if let Some(contact) = scan() {
             let ship_vector = contact.position - position();
             let ship_heading = ship_vector.angle();
             set_radar_heading(ship_heading);
-            turn(
-            200.0 * angle_diff(
-                heading(), 
-                ship_heading
-                )
-            );
-            // accelerate(0.1 * (contact.position - position()));
             self.shoot_at_moving_target();
         }
     }
